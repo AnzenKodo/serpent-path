@@ -1,0 +1,2 @@
+@embed_file game_sound_eat: "./assets/sound/eat.mp3"
+@embed_file game_over_sound: "./assets/sound/game_over.wav"
