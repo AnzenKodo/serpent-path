@@ -36,7 +36,7 @@ Pre-built binaries can be downloaded from the [GitHub Releases](https://github.c
 
 Compile the build tool:
 ```sh
-clang build.c
+clang++ build.cpp
 ```
 Building and Running the project:
 ```sh
