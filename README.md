@@ -30,16 +30,16 @@
 
 ## Building
 
-- Compile the build tool:
+Compile the build tool:
 ```sh
 clang build.c
 ```
-- Building and Running the project:
+Building and Running the project:
 ```sh
 ./a.out build-run release # For Linux
 a.exe build-run release   # For Windows
 ```
-- For more build system options/help:
+For more build system options/help:
 ```sh
 ./a.out --help # For Linux
 a.exe --help   # For Windows
