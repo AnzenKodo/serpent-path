@@ -42,11 +42,16 @@ struct _Wl_X11_State
     xcb_screen_t *screen;
     xcb_key_symbols_t *key_symbols;
     int wakeup_fd;
-    xcb_atom_t wm_delete_window;
-    xcb_atom_t wm_protocols;
-    xcb_atom_t wm_sync_request_counter;
     Wl_Cursor last_set_cursor;
     xcb_cursor_t cursors[Wl_Cursor_COUNT];
+    struct
+    {
+        xcb_atom_t wm_delete_window;
+        xcb_atom_t wm_protocols;
+        xcb_atom_t wm_sync_request_counter;
+        xcb_atom_t net_wm_state;
+        xcb_atom_t net_wm_state_fullscreen;
+    } atom;
     
     // ak: software render
     xcb_pixmap_t pixmap;

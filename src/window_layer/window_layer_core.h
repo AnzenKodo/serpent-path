@@ -279,6 +279,8 @@ internal Rng2_F32 wl_display_rect(void);
 internal void wl_window_pos_set(Wl_Window window, size_t x, size_t y);
 internal void wl_window_icon_set_raw(Wl_Window window, void *icon_data, size_t width, size_t height);
 internal void wl_window_border_set(Wl_Window window, bool enable);
+internal bool wm_window_is_fullscreen(Wl_Window window);
+internal void wm_window_set_fullscreen(Wl_Window window, bool fullscreen);
 
 // ak: Software render ========================================================
 

@@ -35,9 +35,14 @@ internal void wl_init(void)
     WlX11LoadAtom(_wl_x11_state, WM_PROTOCOLS);
     WlX11LoadAtom(_wl_x11_state, WM_DELETE_WINDOW);
     WlX11LoadAtom(_wl_x11_state, WM_SYNC_REQUEST_COUNTER);
-    _wl_x11_state->wm_protocols = WM_PROTOCOLS;
-    _wl_x11_state->wm_delete_window = WM_DELETE_WINDOW;
-    _wl_x11_state->wm_sync_request_counter = WM_SYNC_REQUEST_COUNTER;
+    WlX11LoadAtom(_wl_x11_state, _NET_WM_STATE);
+    WlX11LoadAtom(_wl_x11_state, _NET_WM_STATE_FULLSCREEN);
+    _wl_x11_state->atom.wm_protocols = WM_PROTOCOLS;
+    _wl_x11_state->atom.wm_delete_window = WM_DELETE_WINDOW;
+    _wl_x11_state->atom.wm_sync_request_counter = WM_SYNC_REQUEST_COUNTER;
+    _wl_x11_state->atom.wm_sync_request_counter = WM_SYNC_REQUEST_COUNTER;
+    _wl_x11_state->atom.net_wm_state = _NET_WM_STATE;
+    _wl_x11_state->atom.net_wm_state_fullscreen = _NET_WM_STATE_FULLSCREEN;
     
     // ak: allocate the symbols table
     _wl_x11_state->key_symbols = xcb_key_symbols_alloc(_wl_x11_state->connection);
@@ -114,7 +119,7 @@ internal Wl_Window wl_window_open(Str8 title)
 		XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW |
 		XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |
 		XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_FOCUS_CHANGE |
-        XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
+        XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE
     };
     uint16_t width = _wl_x11_state->screen->width_in_pixels  / 2;
     uint16_t height = _wl_x11_state->screen->height_in_pixels / 2;
@@ -135,6 +140,13 @@ internal Wl_Window wl_window_open(Str8 title)
         XCB_PROP_MODE_REPLACE, window_os->xwindow, XCB_ATOM_WM_ICON_NAME, XCB_ATOM_STRING,
         8, title.length, title.cstr
     );
+    // ak: set window icon
+    WlX11LoadAtom(_wl_x11_state, _NET_WM_ICON);
+    xcb_change_property(
+        _wl_x11_state->connection,
+        XCB_PROP_MODE_REPLACE, window_os->xwindow, _NET_WM_ICON, XCB_ATOM_CARDINAL,
+        32, (uint32_t)(app_logo.length / sizeof(uint32_t)), app_logo.v
+    );
     // xcb_change_property(
     //     _wl_x11_state->connection, XCB_PROP_MODE_REPLACE, window->xwindow, XCB_ATOM_WM_CLASS,
     //     XCB_ATOM_STRING, 8, sizeof("title""\0""Title"), "title\0Title"
@@ -142,8 +154,8 @@ internal Wl_Window wl_window_open(Str8 title)
     
     // ak: handle close event
     xcb_change_property(
-        _wl_x11_state->connection, XCB_PROP_MODE_REPLACE, window_os->xwindow, _wl_x11_state->wm_protocols,
-        XCB_ATOM_ATOM, 32, 1, &_wl_x11_state->wm_delete_window
+        _wl_x11_state->connection, XCB_PROP_MODE_REPLACE, window_os->xwindow, _wl_x11_state->atom.wm_protocols,
+        XCB_ATOM_ATOM, 32, 1, &_wl_x11_state->atom.wm_delete_window
     );
     
     // ak: map window
@@ -425,12 +437,12 @@ internal Wl_Event_List wl_get_events(Arena *arena, bool wait)
                     xcb_client_message_event_t *msg_event = (xcb_client_message_event_t *)event;
                     _Wl_X11_Window *window = _wl_x11_window_from_xwindow(msg_event->window);
 
-                    if(msg_event->data.data32[0] == _wl_x11_state->wm_delete_window)
+                    if(msg_event->data.data32[0] == _wl_x11_state->atom.wm_delete_window)
                     {
                         Wl_Event *e = wl_event_list_push_new(arena, &events, Wl_Event_Kind_WindowClose);
                         e->window.u64[0] = (uint64_t)window;
                     }
-                    else if(msg_event->data.data32[0] == _wl_x11_state->wm_sync_request_counter)
+                    else if(msg_event->data.data32[0] == _wl_x11_state->atom.wm_sync_request_counter)
                     {
                         if(window != NULL)
                         {
@@ -548,6 +560,69 @@ internal void wl_window_border_set(Wl_Window window, bool enable)
 	hints.flags = 2;
 	hints.decorations = enable;
     xcb_change_property(_wl_x11_state->connection, XCB_PROP_MODE_REPLACE, window_os->xwindow, _MOTIF_WM_HINTS, _MOTIF_WM_HINTS, 32, 5, &hints);
+    xcb_flush(_wl_x11_state->connection);
+}
+
+
+internal bool wm_window_is_fullscreen(Wl_Window window)
+{
+    if (wl_window_match(window, wl_window_zero())) { return false; }
+    _Wl_X11_Window *window_os = (_Wl_X11_Window *)window.u64[0];
+    if (!window_os) { return false; }
+
+    bool is_fullscreen = false;
+    xcb_get_property_cookie_t cookie = xcb_get_property(
+        _wl_x11_state->connection,
+        0,
+        window_os->xwindow,
+        _wl_x11_state->atom.net_wm_state,
+        XCB_ATOM_ATOM,
+        0,
+        1024
+    );
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(_wl_x11_state->connection, cookie, NULL);
+    if (reply)
+    {
+        if (reply->type == XCB_ATOM_ATOM && reply->format == 32)
+        {
+            xcb_atom_t *atoms = (xcb_atom_t *)xcb_get_property_value(reply);
+            int count = xcb_get_property_value_length(reply) / sizeof(xcb_atom_t);
+            for (int i = 0; i < count; i += 1)
+            {
+                if (atoms[i] == _wl_x11_state->atom.net_wm_state_fullscreen)
+                {
+                    is_fullscreen = true;
+                    break;
+                }
+            }
+        }
+        free(reply);
+    }
+    return is_fullscreen;
+}
+
+internal void wm_window_set_fullscreen(Wl_Window window, bool fullscreen)
+{
+    if (wl_window_match(window, wl_window_zero())) { return; }
+    _Wl_X11_Window *window_os = (_Wl_X11_Window *)window.u64[0];
+
+    xcb_client_message_event_t ev = STRUCT_ZERO;
+    ev.response_type  = XCB_CLIENT_MESSAGE;
+    ev.format         = 32;
+    ev.window         = window_os->xwindow;
+    ev.type           = _wl_x11_state->atom.net_wm_state;
+    ev.data.data32[0] = fullscreen ? 1 : 0;
+    ev.data.data32[1] = _wl_x11_state->atom.net_wm_state_fullscreen;
+    ev.data.data32[2] = 0;
+    ev.data.data32[3] = 1;
+
+    xcb_send_event(
+            _wl_x11_state->connection,
+            0, // propagate = false
+            _wl_x11_state->screen->root,
+            XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY,
+            (const char *)&ev
+            );
     xcb_flush(_wl_x11_state->connection);
 }
 

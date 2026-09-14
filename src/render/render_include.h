@@ -30,8 +30,6 @@
 #if RENDER_BACKEND == RENDER_BACKEND_OPENGL
 #   if OS_LINUX
 #       include "render_egl.h"
-#   elif OS_WINDOWS
-#       include "render_wgl.h"
 #   else
 #       error no OpenGL render layer for this platform
 #   endif

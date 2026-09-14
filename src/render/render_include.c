@@ -4,8 +4,6 @@
 #   include "render_opengl.c"
 #   if OS_LINUX
 #       include "render_egl.c"
-#   elif OS_WINDOWS
-#       include "render_wgl.c"
 #   else
 #       error no OpenGL render layer for this platform
 #   endif
