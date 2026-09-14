@@ -78,6 +78,7 @@ internal void base_main(void)
     Str8 score_path = str8f(game_state->arena, "%S/%S", data_home, APP_CMD_NAME);
     game_state->score.max = app_get_u64_from_path(score_path, game_state->arena);
     size_t last_saved_max_score = game_state->score.max;
+    wm_window_set_fullscreen(window, true);
     
     // ak: Application Loop ===================================================
     while (!wl_should_exit())

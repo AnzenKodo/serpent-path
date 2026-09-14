@@ -554,7 +554,7 @@ internal void render_window_begin_frame(Wl_Window window, Render_Handle handle)
             glBindFramebufferScope(GL_FRAMEBUFFER, fbos[idx])
             {
                 GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-                glClearColor(1.f, 0.f, 1.f, 1.f);
+                glClearColor(0.03137255f, 0.09411765f, 0.1254902f, 1.0f);
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             }
         }

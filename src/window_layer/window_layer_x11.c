@@ -119,7 +119,7 @@ internal Wl_Window wl_window_open(Str8 title)
 		XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW |
 		XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE |
 		XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_FOCUS_CHANGE |
-        XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE
+        XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
     };
     uint16_t width = _wl_x11_state->screen->width_in_pixels  / 2;
     uint16_t height = _wl_x11_state->screen->height_in_pixels / 2;
