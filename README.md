@@ -9,6 +9,10 @@
 
 **The Serpent Path** is a retro arcade Snake game built from scratch in C/C++ with a classic Nintendo Game Boy aesthetic. Navigate the serpent, eat apples to grow longer, and chase your high score across a wrapping grid while avoiding self-collision!
 
+## Releases
+
+Pre-built binaries can be downloaded from the [GitHub Releases](https://github.com/AnzenKodo/serpent-path/releases) page.
+
 ## Dependences
 
 - Required
