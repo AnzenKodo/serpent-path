@@ -17,6 +17,7 @@ struct _Os_Core_State
 {
     Str8_Array args;
     Log_Context log_context;
+    Str8 data_home;
 };
 
 // ak: Functions
@@ -45,7 +46,7 @@ internal Str8 *os_program_path_get(void);
 
 // ak: Environment Variable ===================================================
 
-internal bool os_env_is_set(Str8 name);
+internal bool os_is_env_exists(Str8 name);
 internal Str8 os_env_get(Str8 name);
 
 // ak: OS Entry Points ========================================================

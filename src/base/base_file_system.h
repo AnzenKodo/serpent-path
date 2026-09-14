@@ -85,8 +85,10 @@ internal void fs_walk_end(Fs_Walk *walk);
 // ak: Directory Operations
 internal bool fs_is_dir_exist(Str8 path);
 internal bool fs_dir_make(Str8 path);
+internal bool fs_dir_ensure(Str8 path);
 
 // ak: Exists
 internal bool fs_dir_path_exists(Str8 path);
+internal bool fs_file_path_exists(Str8 path);
 
 #endif // BASE_FILE_H

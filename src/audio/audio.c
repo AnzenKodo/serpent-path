@@ -242,6 +242,22 @@ internal void audio_cleanup(void)
     if (_audio_state != 0)
     {
         ma_device_uninit(&_audio_state->device);
+        ma_mutex_lock(&_audio_state->mutex);
+        _Audio_Voice *voice = _audio_state->active_voices_first;
+        while (voice != 0)
+        {
+            _Audio_Voice *next_voice = voice->next;
+            if (voice->decoder_valid)
+            {
+                ma_decoder_uninit(&voice->decoder);
+                voice->decoder_valid = false;
+            }
+            voice->state = _Audio_Voice_State_Inactive;
+            voice = next_voice;
+        }
+        _audio_state->active_voices_first = 0;
+        _audio_state->active_voices_last = 0;
+        ma_mutex_unlock(&_audio_state->mutex);
         ma_mutex_uninit(&_audio_state->mutex);
         arena_free(_audio_state->arena);
         _audio_state = 0;

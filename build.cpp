@@ -9,7 +9,7 @@
 // ak: implementation
 #include "src/base/base_include.c"
 #include "src/os/os_include.c"
-#include "src/app/app.h"
+#include "src/app/app.hpp"
 
 // ak: Defines
 //=============================================================================
@@ -60,7 +60,7 @@ global const char *help_message = "DESCRIPTION:\n"
 "   build                Build project\n"
 "   run                  Run project\n"
 "   build-run            Build and Run project\n"
-"   build-dry            Build producing any output files\n"
+"   build-dry            Build without producing any output files\n"
 "   build-debugger       Build for Debugger\n"
 "   gen-meta             Generate code from Metaprogram\n"
 "   --help -h            Print help\n";
@@ -72,63 +72,6 @@ internal int build_run(Str8 cmd);
 internal Str8 build_path(Build_Info *info);
 
 // ak: Compilers functions ====================================================
-
-internal void build_compile_msvc(Build_Info *info)
-{
-    str8_list_pushf(info->arena, &info->cmd, "setup_x64.bat & cl.exe %s", info->entry_point.cstr);
-    if (info->flags & Build_Flag_DryRun)
-    {
-        str8_list_pushf(info->arena, &info->cmd, " -Zs");
-    }
-    // ak: looks
-    str8_list_pushf(info->arena, &info->cmd, " -nologo -diagnostics:caret");
-    // ak: output
-    str8_list_pushf(info->arena, &info->cmd, " -Fo:"BUILD_DIR"\\ -Fe:");
-    str8_list_push(info->arena, &info->cmd, build_path(info));
-    // ak: debug
-    if (info->type != Build_Type_Release)
-    {
-        str8_list_pushf(info->arena, &info->cmd, " -Zi -Fd\""BUILD_DIR"\\vc140.pbd\" -DBUILD_DEBUG=1");
-    }
-    // ak: lock lang Version
-    str8_list_pushf(info->arena, &info->cmd, " -std:c11");
-    // ak: Optimaization
-    if (info->type == Build_Type_Release)
-    {
-        str8_list_pushf(info->arena, &info->cmd, " -Ox -wd4711"); // Enable
-    }
-    else
-    {
-        str8_list_pushf(info->arena, &info->cmd,
-            " -Od"
-            " -Ob1 -wd4710" // ak: Disable inline functions and it's warnings
-        );
-    }
-    // ak: warnings
-    if (info->type != Build_Type_Release)
-    {
-        str8_list_pushf(info->arena, &info->cmd, " -W4 -Wall");
-    }
-    // ak: disbale uselss warnings
-    str8_list_pushf(info->arena, &info->cmd,
-        " -wd4668"                 // ak: For macros magic
-        " -wd4464"                 // ak: Warning about '..' in path
-        " -wd4310 -wd4146 -wd4245" // ak: Cast conversion
-        " -wd4201"                 // ak: Nameless struct/union
-        " -wd4820"                 // ak: Struct padding
-        " -wd4061"                 // ak: Enum switch enumeration
-    );
-    // ak: security
-    str8_list_pushf(info->arena, &info->cmd,
-        " -Qspectre -wd5045"  // ak: Spectre variant 1 vulnerability
-        " -GS"                // ak: Canary insertion
-        " -guard:cf"          // ak: Control-flow protection
-    );
-    if (info->type != Build_Type_Debug && info->type != Build_Type_Release)
-    {
-        str8_list_pushf(info->arena, &info->cmd, " -fsanitize=address");
-    }
-}
 
 internal void build_compile_gcc_style_flags(Build_Info *info)
 {
@@ -249,10 +192,6 @@ internal void build_compile(Build_Info *info)
     {
         build_compile_clang(info);
     }
-    else if (Context_Compiler_CURRENT == Context_Compiler_Msvc)
-    {
-        build_compile_msvc(info);
-    }
     else
     {
         fmt_eprintf("Error: OS build compile is not supported.");
@@ -268,10 +207,6 @@ internal int build_run_program(Build_Info *info)
     if (info->flags & Build_Flag_MingW)
     {
         str8_list_pushf(info->arena, &list, "WINEARCH=win64 wine ");
-    }
-    if (Context_Os_CURRENT == Context_Os_Windows)
-    {
-        str8_list_pushf(info->arena, &list, "setup_x64.bat & ");
     }
     str8_list_push(info->arena, &list, build_path(info));
     str8_list_pushf(info->arena, &list, " %.*s", str8_varg(info->args));
@@ -350,23 +285,16 @@ internal int build_compile_program(Build_Info *info, Build_Info *ma_info)
     if (!(info->flags & Build_Flag_DryRun))
     {
         // ak: libs
-        if ((info->flags & Build_Flag_MingW) || Context_Os_CURRENT == Context_Os_Windows)
+        str8_list_pushf(info->arena, &info->cmd, " -lm -lpthread");
+        str8_list_pushf(info->arena, &info->cmd, " -lxcb -lxcb-image -lxcb-sync -lxcb-keysyms -lxcb-cursor");
+        str8_list_pushf(info->arena, &info->cmd, " -lEGL -lGL");
+        if (info->type == Build_Type_Release)
         {
-            str8_list_pushf(info->arena, &info->cmd, " -lopengl32 -luser32 -lgdi32");
+            str8_list_pushf(info->arena, &info->cmd, " build/libminiaudio.a");
         }
         else
         {
-            str8_list_pushf(info->arena, &info->cmd, " -lm -lpthread");
-            str8_list_pushf(info->arena, &info->cmd, " -lxcb -lxcb-image -lxcb-sync -lxcb-keysyms -lxcb-cursor");
-            str8_list_pushf(info->arena, &info->cmd, " -lEGL -lGL");
-            if (info->type == Build_Type_Release)
-            {
-                str8_list_pushf(info->arena, &info->cmd, " build/libminiaudio.a");
-            }
-            else
-            {
-                str8_list_pushf(info->arena, &info->cmd, " %s8", build_path(ma_info));
-            }
+            str8_list_pushf(info->arena, &info->cmd, " %s8", build_path(ma_info));
         }
     }
     Str8 cmd = str8_list_join(info->arena, &info->cmd, NULL);
@@ -388,6 +316,7 @@ internal void base_main(void)
     
     bool should_print_help = false;
     bool run_program = false;
+    bool only_run_program = false;
     bool gen_meta_program = false;
     int exit_code = 0;
     Str8_Array *args = term_args_get();
@@ -400,13 +329,13 @@ internal void base_main(void)
         {
             arg2 = args->v[2];
         }
-        if (str8_match(arg1, str8("--help"), 0) || str8_match(arg1, str8("-h"), 0))
+        if (str8_match(arg1, str8("--help"), Str_Match_Flag_None) || str8_match(arg1, str8("-h"), Str_Match_Flag_None))
         {
             should_print_help = true;
         }
-        else if (str8_match(arg1, str8("build"), 0))
+        else if (str8_match(arg1, str8("build"), Str_Match_Flag_None))
         {
-            if (str8_match(arg2, str8("release"), 0))
+            if (str8_match(arg2, str8("release"), Str_Match_Flag_None))
             {
                 info.type = Build_Type_Release;
             }
@@ -415,9 +344,9 @@ internal void base_main(void)
                 info.type = Build_Type_Dev;
             }
         }
-        else if (str8_match(arg1, str8("build-run"), 0))
+        else if (str8_match(arg1, str8("build-run"), Str_Match_Flag_None))
         {
-            if (str8_match(arg2, str8("release"), 0))
+            if (str8_match(arg2, str8("release"), Str_Match_Flag_None))
             {
                 info.type = Build_Type_Release;
             }
@@ -427,22 +356,30 @@ internal void base_main(void)
             }
             run_program = true;
         }
-        else if (str8_match(arg1, str8("build-dry"), 0))
+        else if (str8_match(arg1, str8("build-dry"), Str_Match_Flag_None))
         {
             info.type = Build_Type_Dev;
             info.flags |= Build_Flag_DryRun;
         }
-        else if (str8_match(arg1, str8("build-debugger"), 0))
+        else if (str8_match(arg1, str8("build-debugger"), Str_Match_Flag_None))
         {
             info.type = Build_Type_Debug;
         }
-        else if (str8_match(arg1, str8("gen-meta"), 0))
+        else if (str8_match(arg1, str8("gen-meta"), Str_Match_Flag_None))
         {
             gen_meta_program = true;
         }
-        else if (str8_match(arg1, str8("run"), 0))
+        else if (str8_match(arg1, str8("run"), Str_Match_Flag_None))
         {
-            run_program = true;
+            if (str8_match(arg2, str8("release"), Str_Match_Flag_None))
+            {
+                info.type = Build_Type_Release;
+            }
+            else
+            {
+                info.type = Build_Type_Dev;
+            }
+            only_run_program = true;
         }
         else
         {
@@ -455,19 +392,33 @@ internal void base_main(void)
     {
         should_print_help = true;
     }
-    if (str8_match(args->v[2], str8("mingw"), 0))
+    if (str8_match(args->v[2], str8("mingw"), Str_Match_Flag_None))
     {
         info.flags |= Build_Flag_MingW;
     }
     
-    if (!should_print_help)
+    if (only_run_program && !fs_file_path_exists(build_path(&info)))
+    {
+        only_run_program = false;
+        run_program = true;
+    }
+    
+    if (should_print_help)
+    {
+        fmt_printf("%s", help_message);
+    }
+    else if (only_run_program)
+    {
+        build_run(build_path(&info));
+    }
+    else
     {
         fmt_println("# Build Output ============================================================== #");
         
         // ak: create build directory if not exists
         if (fs_dir_make(str8(BUILD_DIR)))
         {
-            fmt_printf("Created '"BUILD_DIR"' directory.\n");
+            fmt_printf("Created '" BUILD_DIR "' directory.\n");
         }
         
         // ak: build miniaudio lib
@@ -498,10 +449,6 @@ internal void base_main(void)
             }
         }
     }
-    else
-    {
-        fmt_printf("%s", help_message);
-    }
     arena_free(arena);
     os_exit(exit_code);
 }
@@ -523,14 +470,7 @@ internal int build_run(Str8 cmd)
 internal Str8 build_path(Build_Info *info)
 {
     Str8_List list = STRUCT_ZERO;
-    if (Context_Os_CURRENT == Context_Os_Windows)
-    {
-        str8_list_pushf(info->arena, &list, BUILD_DIR"\\%s", info->name.cstr);
-    }
-    else
-    {
-        str8_list_pushf(info->arena, &list, BUILD_DIR"/%s", info->name.cstr);
-    }
+    str8_list_pushf(info->arena, &list, BUILD_DIR"/%s", info->name.cstr);
     
     switch (info->type)
     {
@@ -551,20 +491,10 @@ internal Str8 build_path(Build_Info *info)
     if ((info->flags & Build_Flag_Static_Lib) && Context_Os_CURRENT == Context_Os_Linux)
     {
         str8_list_pushf(info->arena, &list, "_for_static.so");
-    } else if ((info->flags & Build_Flag_Dynamic_Lib) && Context_Os_CURRENT == Context_Os_Linux)
+    }
+    else if ((info->flags & Build_Flag_Dynamic_Lib) && Context_Os_CURRENT == Context_Os_Linux)
     {
         str8_list_pushf(info->arena, &list, ".so");
-    }
-    else if ((info->flags & Build_Flag_Static_Lib) && Context_Os_CURRENT == Context_Os_Windows)
-    {
-        str8_list_pushf(info->arena, &list, ".lib");
-    }
-    else if ((info->flags & Build_Flag_Dynamic_Lib) && Context_Os_CURRENT == Context_Os_Windows)
-    {
-        str8_list_pushf(info->arena, &list, ".dll");
-    } else if (Context_Os_CURRENT == Context_Os_Windows)
-    {
-        str8_list_pushf(info->arena, &list, ".exe");
     }
     
     Str8 result = str8_list_join(info->arena, &list, NULL);

@@ -1,73 +1,39 @@
-# CMono
+# Serpent Path
 
-A C monorepo for my personal projects
+**The Serpent Path** is a retro arcade Snake game built from scratch in C/C++ with a classic Nintendo Game Boy aesthetic. Navigate the serpent, eat apples to grow longer, and chase your high score across a wrapping grid while avoiding self-collision!
 
-## Installation and Setup
-
-### Dependences
+## Dependences
 
 - Required
-    - C Compiler
-        - Supported Compilers are: **Clang**, **GCC**, **MSVC** (Windows only)
-    - **Linux only:** XCB libraries (for GUI/windowing)
-- Optional
-    - **MinGW**: For cross-compiling Windows binaries on Linux
-    - **Wine**: For running Windows builds on Linux during development/testing
+    - Operating System: Linux
+    - C Compiler: clang, gcc
+    - Libraries:
+        - C Math Library (`libm` / `-lm`)
+        - POSIX Threads (`libpthread` / `-lpthread`)
+        - Dynamic Linking Loader (`libdl` / `-ldl`)
+        - XCB (X C Binding - Windowing & Input):
+            - XCB Core (`libxcb`)
+            - XCB Image (`libxcb-image`)
+            - XCB Sync (`libxcb-sync`)
+            - XCB Keysyms (`libxcb-keysyms`)
+            - XCB Cursor (`libxcb-cursor`)
+        - Graphics:
+            - OpenGL (`libGL`)
+            - EGL (`libEGL`)
 
-### Building
+## Building
 
 - Compile the build tool:
 ```sh
 clang build.c
 ```
-- Build the project:
+- Building and Running the project:
 ```sh
-./a.out build # For Linux
-./a.exe build # For Windows
+./a.out build-run release # For Linux
+a.exe build-run release   # For Windows
 ```
 - For more build system options/help:
 ```sh
 ./a.out --help # For Linux
-./a.exe --help # For Windows
+a.exe --help   # For Windows
 ```
-
-### Running
-
-- Building and Running the program:
-```sh
-./a.out build-run  # For Linux
-./a.exe build-run  # For Windows
-```
-
-## Reference
-
-### Lib
-
-- [stb](https://github.com/nothings/stb)
-- [gb](https://github.com/gingerBill/gb)
-- [Handmade Math](https://github.com/HandmadeMath/HandmadeMath)
-- [kgflags]( http://github.com/kgabis/kgflags)
-- [RGFW](https://github.com/ColleagueRiley/RGFW)
-- [nob.h](https://github.com/tsoding/nob.h)
-
-### Projects
-
-- [Handmade Hero](https://github.com/cj1128/handmade-hero)
-- [RAD Debugger](https://github.com/EpicGamesExt/raddebugger)
-- [4coder](https://github.com/4coder-archive/4coder)
-
-### Guide
-
-- [docs.gl](https://docs.gl/)
-
-### Articles/Posts
-
-- [Pre-defined C/C++ Compiler Macros](https://github.com/cpredef/predef)
-- [The Arena - Custom Memory Allocators in C](https://www.bytesbeneath.com/p/the-arena-custom-memory-allocators)
-
-## Examples
-
-- [OpenGL Xlib Example](https://github.com/vbsw/opengl-xlib-example)
-- [Create an OpenGL context using Xlib and EGL](https://gist.github.com/pedrominicz/2d81559c5fb66d23d6bb627570956605)
-
-

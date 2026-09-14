@@ -3,11 +3,27 @@
 
 internal Vec2_F32 game_random_pos_get(void)
 {
+    Vec2_F32 result = STRUCT_ZERO;
     uint32_t time = time_now_unix();
-    float    x    = rand_u32(time)      % (uint32_t)game_state->cells.x;
-    float    y    = rand_u32(time+time) % (uint32_t)game_state->cells.y;
-    Vec2_F32 pos  = (Vec2_F32){x, y};
-    return pos;
+    Game_Entity *snake = &game_state->entities[Game_Entity_Type_Snake];
+    bool on_snake = true;
+    while (on_snake)
+    {
+        on_snake = false;
+        result.x = rand_u32(time++) % (uint32_t)game_state->cells.x;
+        result.y = rand_u32(time++) % (uint32_t)game_state->cells.y;
+        
+        for (size_t i = 0; i < snake->pos_array.length; i++)
+        {
+            if (snake->pos_array.v[i].x == result.x && snake->pos_array.v[i].y == result.y)
+            {
+                on_snake = true;
+                break;
+            }
+        }
+    }
+    
+    return result;
 }
 
 internal void game_entity_pos_add(Game_Entity *entity, Vec2_F32 pos)
@@ -245,7 +261,9 @@ internal void game_loop(Arena *arena)
         
         Vec2_F32 text_pos = STRUCT_ZERO;
         text_pos.x = game_state->rect.playground.x0,
-        text_pos.y = game_state->rect.playground.y0-game_state->cell_size;
+        text_pos.y = game_state->rect.playground.y0 - game_state->cell_size;
         game_draw_text(score_text, 1, text_pos);
+        text_pos.y = game_state->rect.playground.y1 + (game_state->cell_size * 1.5f);
+        game_draw_text(str8("Move:←→↑↓ Fullscreen:F11 Quit:Q"), 1.f, text_pos);
     }
 }

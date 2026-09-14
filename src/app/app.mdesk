@@ -1,1 +1,2 @@
 @embed_file app_font: "./assets/font/QuinqueFive.ttf"
+@embed_file app_logo: "./assets/images/logo.bin"

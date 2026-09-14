@@ -78,6 +78,11 @@ internal size_t os_file_read(Fs_File file, Rng1_U64 rng, void *out_data)
     return total_num_bytes_read;
 }
 
+internal Str8 os_get_data_home_path(void)
+{
+    return _os_core_state.data_home;
+}
+
 // ak: Exit ===================================================================
 
 internal void os_exit(int32_t exit_code)
@@ -103,7 +108,7 @@ internal void os_sleep_ms(uint32_t millisec)
 // ak: Environment Variable
 //=============================================================================
 
-internal bool os_env_is_set(Str8 name)
+internal bool os_is_env_exists(Str8 name)
 {
     bool result = false;
     for (char **e = environ; *e != NULL; e++)
@@ -114,6 +119,7 @@ internal bool os_env_is_set(Str8 name)
         if (str8_match(env_name, name, Str_Match_Flag_None))
         {
             result = true;
+            break;
         }
     }
     return result;
@@ -126,9 +132,11 @@ internal Str8 os_env_get(Str8 name)
     {
         Str8 env = str8_from_cstr(*e);
         uint64_t equal_pos = str8_find_substr(env, 0, str8("="), Str_Match_Flag_None);
-        if (os_env_is_set(name))
+        Str8 env_name = str8_prefix(env, equal_pos);
+        if (str8_match(env_name, name, Str_Match_Flag_None))
         {
             result = str8_skip(env, equal_pos+1);
+            break;
         }
     }
     return result;
@@ -140,11 +148,32 @@ internal Str8 os_env_get(Str8 name)
 int main(int argc, char *argv[])
 {
     Arena_Temp scratch = arena_scratch_begin(NULL, 0);
-    _os_core_state.args = array_alloc(scratch.arena, Str8_Array, (size_t)argc);
-    for (int i = 0; i < argc; i++)
+    // ak: make array of args
     {
-        Str8 str = str8_from_cstr(argv[i]);
-        array_append(&_os_core_state.args, str);
+        _os_core_state.args = array_alloc(scratch.arena, Str8_Array, (size_t)argc);
+        for (int i = 0; i < argc; i++)
+        {
+            Str8 str = str8_from_cstr(argv[i]);
+            array_append(&_os_core_state.args, str);
+        }
+    }
+    // ak: get os data home path
+    {
+        if (os_is_env_exists(str8("XDG_DATA_HOME")))
+        {
+            _os_core_state.data_home = os_env_get(str8("XDG_DATA_HOME"));
+        }
+        if (_os_core_state.data_home.length == 0)
+        {
+            if (os_is_env_exists(str8("HOME")))
+            {
+                Str8 home = os_env_get(str8("HOME"));
+                if (home.length != 0)
+                {
+                    _os_core_state.data_home = str8f(scratch.arena, "%s8/.local/share", home);
+                }
+            }
+        }
     }
     os_main();
     arena_scratch_end(scratch);
@@ -375,14 +404,20 @@ internal void fs_walk_end(Fs_Walk *walk)
 
 internal bool fs_is_dir_exist(Str8 path)
 {
+    Arena_Temp scratch = arena_scratch_begin(0, 0);
+    Str8 path_copy = str8_copy(scratch.arena, path);
     struct stat st;
-    int result = stat((const char*)path.cstr, &st);
+    int result = stat((const char*)path_copy.cstr, &st);
+    arena_scratch_end(scratch);
     return (result == 0) && S_ISDIR(st.st_mode);
 }
 
 internal bool fs_dir_make(Str8 path)
 {
-    int result = mkdir((const char *)path.cstr, 0700);
+    Arena_Temp scratch = arena_scratch_begin(0, 0);
+    Str8 path_copy = str8_copy(scratch.arena, path);
+    int result = mkdir((const char *)path_copy.cstr, 0700);
+    arena_scratch_end(scratch);
     return result == 0;
 }
 

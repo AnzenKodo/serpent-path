@@ -13,7 +13,7 @@ internal bool term_is_color_allowed(void)
 {
     bool result = true;
     // Str8 term_env = os_env_get(str8("TERM"));
-    if (os_env_is_set(str8("NO_COLOR")) || !term_is_terminal(OS_STDOUT))
+    if (os_is_env_exists(str8("NO_COLOR")) || !term_is_terminal(OS_STDOUT))
     {
         result = false;
     }
