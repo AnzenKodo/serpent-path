@@ -134,7 +134,11 @@ internal void build_compile_gcc_style_flags(Build_Info *info)
         " -Wno-unused-variable"
     );
     // ak: security
-    str8_list_pushf(info->arena, &info->cmd, " -mshstk -fcf-protection=full -fstack-protector");
+    if (Context_Arch_CURRENT == Context_Arch_X64 || Context_Arch_CURRENT == Context_Arch_X86)
+    {
+        str8_list_pushf(info->arena, &info->cmd, " -mshstk -fcf-protection=full");
+    }
+    str8_list_pushf(info->arena, &info->cmd, " -fstack-protector");
     if ((info->type != Build_Type_Debug && info->type != Build_Type_Release) && !(info->flags & Build_Flag_MingW))
     {
         str8_list_pushf(info->arena, &info->cmd, " -fsanitize=address -fno-omit-frame-pointer");

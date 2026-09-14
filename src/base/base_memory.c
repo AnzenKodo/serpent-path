@@ -31,10 +31,14 @@ internal inline void *mem_copy(void *dest, void const *source, size_t n)
             :
             : "memory"
         );
+    #else
+        __builtin_memcpy(dest, source, n);
     #endif
 #elif ARCH_X86
     void *dest_copy = dest;
     __asm__ __volatile__("rep movsb" : "+D"(dest_copy), "+S"(source), "+c"(n) : : "memory");
+#else
+    __builtin_memcpy(dest, source, n);
 #endif
     return dest;
 }

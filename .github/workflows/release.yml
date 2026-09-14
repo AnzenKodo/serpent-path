@@ -1,0 +1,128 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag (e.g. v1.0.0)'
+        required: true
+        type: string
+      release_name:
+        description: 'Release title (defaults to tag)'
+        required: false
+        type: string
+      draft:
+        description: 'Create as a draft release'
+        type: boolean
+        default: false
+      prerelease:
+        description: 'Create as a prerelease'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.arch }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            os: ubuntu-24.04
+          - arch: arm64
+            os: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            clang \
+            libxcb1-dev \
+            libxcb-image0-dev \
+            libxcb-sync-dev \
+            libxcb-keysyms1-dev \
+            libxcb-cursor-dev \
+            libegl1-mesa-dev \
+            libgl1-mesa-dev \
+            libasound2-dev
+
+      - name: Build release binary
+        run: |
+          clang++ build.cpp
+          ./a.out build release
+
+      - name: Package release assets
+        run: |
+          mkdir -p dist
+          
+          # Standalone executable
+          cp build/serpent-path dist/serpent-path-linux-${{ matrix.arch }}
+          chmod +x dist/serpent-path-linux-${{ matrix.arch }}
+
+          # Archive bundle with README
+          mkdir -p package/serpent-path-linux-${{ matrix.arch }}
+          cp build/serpent-path package/serpent-path-linux-${{ matrix.arch }}/serpent-path
+          cp README.md package/serpent-path-linux-${{ matrix.arch }}/
+          tar -czf dist/serpent-path-linux-${{ matrix.arch }}.tar.gz -C package serpent-path-linux-${{ matrix.arch }}
+
+          # Generate SHA-256 checksums
+          cd dist
+          sha256sum serpent-path-linux-${{ matrix.arch }} > serpent-path-linux-${{ matrix.arch }}.sha256
+          sha256sum serpent-path-linux-${{ matrix.arch }}.tar.gz > serpent-path-linux-${{ matrix.arch }}.tar.gz.sha256
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create or update GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ inputs.tag_name }}
+          RELEASE_TITLE: ${{ inputs.release_name != '' && inputs.release_name || inputs.tag_name }}
+          IS_DRAFT: ${{ inputs.draft }}
+          IS_PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          EXTRA_FLAGS=()
+          if [ "$IS_DRAFT" = "true" ]; then
+            EXTRA_FLAGS+=("--draft")
+          fi
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            EXTRA_FLAGS+=("--prerelease")
+          fi
+
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Release $TAG_NAME already exists, uploading assets..."
+            gh release upload "$TAG_NAME" release-assets/* --clobber
+          else
+            echo "Creating release $TAG_NAME..."
+            gh release create "$TAG_NAME" release-assets/* \
+              --title "$RELEASE_TITLE" \
+              --generate-notes \
+              "${EXTRA_FLAGS[@]}"
+          fi
